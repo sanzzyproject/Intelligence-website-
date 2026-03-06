@@ -9,7 +9,6 @@ app.use(express.json());
 const userLimits = {};
 const MAX_LIMIT = 4;
 
-// 17 ENDPOINT LENGKAP - TIDAK ADA YANG DIKURANGI
 const endpointMap = {
     'NODE_01': { path: 'getcontact', method: 'GET' },
     'NODE_02': { path: 'truecaller', method: 'GET' },
@@ -51,12 +50,10 @@ app.post('/api/search', async (req, res) => {
         const targetConfig = endpointMap[nodeId];
         const targetUrl = `http://api.adx7.com/${targetConfig.path}`;
         
-        // Mengirim banyak variasi parameter agar salah satunya pasti "nyangkut" di API target
-        const payloadParams = { query: query, q: query, search: query, id: query, nik: query, phone: query };
-        
-        // Menambahkan User-Agent agar tidak dicurigai sebagai bot spam
+        // Kirim parameter yang paling umum diminta API
+        const payloadParams = { query: query, q: query };
         const axiosConfig = {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 SANN404/Intel' },
+            headers: { 'User-Agent': 'Mozilla/5.0 SANN404/Intel' },
             params: targetConfig.method === 'GET' ? payloadParams : {}
         };
 
@@ -67,34 +64,45 @@ app.post('/api/search', async (req, res) => {
             response = await axios.get(targetUrl, axiosConfig);
         }
 
-        // APA PUN HASILNYA, SELAMA API MERESPONS 200 OK, KITA TAMPILKAN DATANYA
-        if (response.status === 200) {
-            userLimits[userIp].count += 1;
+        let responseData = response.data;
+        let isDataFound = true;
+
+        // LOGIKA PENGECEKAN DATA KOSONG
+        if (typeof responseData === 'string') {
+            // Bersihkan spasi dan HTML untuk mengecek isi aslinya
+            let cleanText = responseData.replace(/<[^>]*>?/gm, '').trim();
+            // Jika isinya terlalu pendek atau hanya template "Code: ID:"
+            if (cleanText.length < 20 || cleanText.includes('Code:') && !cleanText.match(/[a-zA-Z0-9]{5,}/)) {
+                isDataFound = false;
+            }
+        } else if (typeof responseData === 'object') {
+            if (Object.keys(responseData).length === 0 || responseData.error) {
+                isDataFound = false;
+            }
+        } else if (!responseData) {
+            isDataFound = false;
+        }
+
+        if (isDataFound) {
+            userLimits[userIp].count += 1; // POTONG LIMIT
             return res.json({
                 status: 'success',
-                data: response.data,
+                data: responseData,
                 limit_remaining: MAX_LIMIT - userLimits[userIp].count
+            });
+        } else {
+            return res.json({
+                status: 'not_found',
+                message: 'Data tidak ditemukan di database target.',
+                data: responseData, // Tetap kirimkan datanya untuk ditampilkan
+                limit_remaining: MAX_LIMIT - userLimits[userIp].count // LIMIT TIDAK DIPOTONG
             });
         }
 
     } catch (error) {
-        // TANGKAP ERROR ASLI DARI API AGAR BISA DIDEBUG
-        let errorMsg = 'Koneksi ke server target gagal total / Timeout.';
-        let errorData = null;
-
-        if (error.response) {
-            // Server target menolak (misal error 404, 500, dll)
-            errorMsg = `API Target Menolak Request (Kode: ${error.response.status})`;
-            errorData = error.response.data;
-        } else if (error.request) {
-            // API target mati atau tidak merespons sama sekali
-            errorMsg = 'API Target Offline atau tidak merespons request Vercel.';
-        }
-
         return res.json({
             status: 'error',
-            message: errorMsg,
-            data: errorData,
+            message: 'Koneksi ke server target gagal (Timeout/Offline).',
             limit_remaining: MAX_LIMIT - userLimits[userIp].count
         });
     }
