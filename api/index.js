@@ -6,11 +6,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Memori penyimpan limit (ter-reset jika server Vercel idle/restart)
 const userLimits = {};
 const MAX_LIMIT = 4;
 
-// KAMUS RAHASIA: Mapping kode dari frontend ke endpoint asli
+// 17 ENDPOINT LENGKAP - TIDAK ADA YANG DIKURANGI
 const endpointMap = {
     'NODE_01': { path: 'getcontact', method: 'GET' },
     'NODE_02': { path: 'truecaller', method: 'GET' },
@@ -28,17 +27,14 @@ const endpointMap = {
     'NODE_14': { path: 'namadukcapil', method: 'GET' },
     'NODE_15': { path: 'nikdukcapil', method: 'GET' },
     'NODE_16': { path: 'kkdukcapil', method: 'GET' },
-    'NODE_17': { path: 'datasekolah', method: 'POST' } // Menggunakan POST sesuai instruksi
+    'NODE_17': { path: 'datasekolah', method: 'POST' }
 };
 
 app.post('/api/search', async (req, res) => {
     const { nodeId, query } = req.body;
-    
-    // Deteksi IP
     const userIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
     const today = new Date().toDateString();
 
-    // Validasi apakah nodeId ada di kamus rahasia
     if (!endpointMap[nodeId]) {
         return res.status(400).json({ status: 'error', message: 'Target Node tidak valid.' });
     }
@@ -48,51 +44,57 @@ app.post('/api/search', async (req, res) => {
     }
 
     if (userLimits[userIp].count >= MAX_LIMIT) {
-        return res.json({ 
-            status: 'limit_reached', 
-            message: 'Akses ditolak: Limit harian (4x) telah habis.' 
-        });
+        return res.json({ status: 'limit_reached', message: 'Akses ditolak: Limit harian (4x) habis.' });
     }
 
     try {
         const targetConfig = endpointMap[nodeId];
         const targetUrl = `http://api.adx7.com/${targetConfig.path}`;
-        let response;
+        
+        // Mengirim banyak variasi parameter agar salah satunya pasti "nyangkut" di API target
+        const payloadParams = { query: query, q: query, search: query, id: query, nik: query, phone: query };
+        
+        // Menambahkan User-Agent agar tidak dicurigai sebagai bot spam
+        const axiosConfig = {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 SANN404/Intel' },
+            params: targetConfig.method === 'GET' ? payloadParams : {}
+        };
 
-        // Eksekusi request dari Backend ke Target secara tersembunyi
+        let response;
         if (targetConfig.method === 'POST') {
-            response = await axios.post(targetUrl, { query: query });
+            response = await axios.post(targetUrl, payloadParams, axiosConfig);
         } else {
-            response = await axios.get(targetUrl, { params: { query: query } });
+            response = await axios.get(targetUrl, axiosConfig);
         }
 
-        const responseData = response.data;
-
-        // Cek jika data ada (bukan null, bukan array kosong, bukan object kosong)
-        const isDataFound = responseData && (
-            (Array.isArray(responseData) && responseData.length > 0) || 
-            (typeof responseData === 'object' && Object.keys(responseData).length > 0 && !responseData.error)
-        );
-
-        if (isDataFound) {
-            userLimits[userIp].count += 1; // Potong limit
+        // APA PUN HASILNYA, SELAMA API MERESPONS 200 OK, KITA TAMPILKAN DATANYA
+        if (response.status === 200) {
+            userLimits[userIp].count += 1;
             return res.json({
                 status: 'success',
-                data: responseData,
-                limit_remaining: MAX_LIMIT - userLimits[userIp].count
-            });
-        } else {
-            return res.json({
-                status: 'not_found',
-                message: 'Data tidak ditemukan. Limit Anda aman.',
+                data: response.data,
                 limit_remaining: MAX_LIMIT - userLimits[userIp].count
             });
         }
 
     } catch (error) {
+        // TANGKAP ERROR ASLI DARI API AGAR BISA DIDEBUG
+        let errorMsg = 'Koneksi ke server target gagal total / Timeout.';
+        let errorData = null;
+
+        if (error.response) {
+            // Server target menolak (misal error 404, 500, dll)
+            errorMsg = `API Target Menolak Request (Kode: ${error.response.status})`;
+            errorData = error.response.data;
+        } else if (error.request) {
+            // API target mati atau tidak merespons sama sekali
+            errorMsg = 'API Target Offline atau tidak merespons request Vercel.';
+        }
+
         return res.json({
             status: 'error',
-            message: `Koneksi ke database gagal atau target timeout. Limit Anda aman.`,
+            message: errorMsg,
+            data: errorData,
             limit_remaining: MAX_LIMIT - userLimits[userIp].count
         });
     }
