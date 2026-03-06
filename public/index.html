@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>INTEL DB - SANN404</title>
+    <style>
+        :root {
+            --hitam-muda: #1c1c1c;
+            --putih-tua: #e3e3e3;
+            --border-color: #444;
+        }
+
+        body {
+            background-color: var(--hitam-muda);
+            color: var(--putih-tua);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .terminal {
+            width: 100%;
+            max-width: 600px;
+            background-color: #111;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.8);
+            margin-top: 10px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 1.3rem;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 15px;
+            margin-top: 0;
+            letter-spacing: 1.5px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: block;
+            color: #aaa;
+        }
+
+        select, input, button {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--hitam-muda);
+            color: var(--putih-tua);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-family: inherit;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--putih-tua);
+        }
+
+        button {
+            background-color: var(--putih-tua);
+            color: var(--hitam-muda);
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 5px;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .output-screen {
+            background-color: #000;
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            min-height: 200px;
+            margin-top: 20px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            border-radius: 4px;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+            font-size: 0.8rem;
+            color: #777;
+            border-top: 1px dashed var(--border-color);
+            padding-top: 10px;
+        }
+
+        .dev-credit {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 0.85rem;
+            color: #666;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="terminal">
+        <h1>[ SYSTEM OVERRIDE ]</h1>
+        
+        <label for="node">TARGET NODE:</label>
+        <select id="node">
+            <option value="NODE_01">DB_CONTACT_01</option>
+            <option value="NODE_02">DB_CALLER_02</option>
+            <option value="NODE_03">DB_LEAK_03</option>
+            <option value="NODE_04">DB_WA_04</option>
+            <option value="NODE_05">DB_EWALLET_05</option>
+            <option value="NODE_06">DB_GURU_06</option>
+            <option value="NODE_07">DB_EMAIL_07</option>
+            <option value="NODE_08">DB_NAME_08</option>
+            <option value="NODE_09">DB_SISWA_09</option>
+            <option value="NODE_10">DB_NIK_10</option>
+            <option value="NODE_11">DB_DCPHONE_11</option>
+            <option value="NODE_12">DB_BPJSP_12</option>
+            <option value="NODE_13">DB_BPJSK_13</option>
+            <option value="NODE_14">DB_DUKNAME_14</option>
+            <option value="NODE_15">DB_DUKNIK_15</option>
+            <option value="NODE_16">DB_DUKKK_16</option>
+            <option value="NODE_17">DB_SCHOOL_17</option>
+        </select>
+
+        <label for="query">QUERY PARAMETER:</label>
+        <input type="text" id="query" placeholder="Input target data..." autocomplete="off">
+
+        <button onclick="executeSearch()" id="btn-search">Execute Command</button>
+
+        <div class="output-screen" id="output">
+> SYSTEM READY.
+> ENCRYPTION: ACTIVE.
+> Awaiting input...
+        </div>
+
+        <div class="status-bar">
+            <span id="limit-status">LIMIT: UNKNOWN</span>
+            <span>SECURE CONNECTION</span>
+        </div>
+
+        <div class="dev-credit">
+            SYSTEM BY: <strong>SANN404 FORUM</strong>
+        </div>
+    </div>
+
+    <script>
+        async function executeSearch() {
+            const nodeId = document.getElementById('node').value;
+            const query = document.getElementById('query').value.trim();
+            const outputBox = document.getElementById('output');
+            const limitStatus = document.getElementById('limit-status');
+            const btn = document.getElementById('btn-search');
+
+            if(!query) {
+                outputBox.innerHTML = "> [ERROR] Query parameter is required.";
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerText = "EXECUTING...";
+            outputBox.innerHTML = `> Establishing secure tunnel...\n> Target Node: ${nodeId}\n> Extracting data...`;
+
+            try {
+                // Mengirimkan 'NODE_XX' saja ke server. Server yang tahu URL aslinya.
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nodeId, query })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    outputBox.innerHTML = `> [SUCCESS] DATA EXTRACTED.\n\n${JSON.stringify(result.data, null, 2)}`;
+                } else if (result.status === 'not_found' || result.status === 'error') {
+                    outputBox.innerHTML = `> [FAILED] ${result.message}`;
+                } else if (result.status === 'limit_reached') {
+                    outputBox.innerHTML = `> [LOCKED] ${result.message}`;
+                }
+
+                if(result.limit_remaining !== undefined) {
+                    limitStatus.innerText = `LIMIT REMAINING: ${result.limit_remaining}/4`;
+                }
+
+            } catch (error) {
+                outputBox.innerHTML = "> [FATAL ERROR] Server connection timeout or failure.";
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "EXECUTE COMMAND";
+            }
+        }
+    </script>
+</body>
+</html>
