@@ -83,7 +83,6 @@
             font-size: 0.85rem;
             line-height: 1.5;
             overflow-x: auto;
-            white-space: pre-wrap;
             border-radius: 4px;
         }
         .status-bar {
@@ -152,6 +151,18 @@
     </div>
 
     <script>
+        function formatData(data) {
+            // Jika data berupa Teks/HTML (seperti di screenshot)
+            if (typeof data === 'string') {
+                return data.replace(/\\n/g, '<br>').replace(/\n/g, '<br>');
+            }
+            // Jika data berupa JSON Object
+            if (data && typeof data === 'object') {
+                return `<pre style="margin:0; white-space:pre-wrap;">${JSON.stringify(data, null, 2)}</pre>`;
+            }
+            return data;
+        }
+
         async function executeSearch() {
             const nodeId = document.getElementById('node').value;
             const query = document.getElementById('query').value.trim();
@@ -166,7 +177,7 @@
 
             btn.disabled = true;
             btn.innerText = "EXECUTING...";
-            outputBox.innerHTML = `> Establishing secure tunnel...\n> Target Node: ${nodeId}\n> Extracting data...`;
+            outputBox.innerHTML = `> Establishing secure tunnel...\n> Target Node: ${nodeId}\n> Extracting data...`.replace(/\n/g, '<br>');
 
             try {
                 const response = await fetch('/api/search', {
@@ -176,24 +187,26 @@
                 });
 
                 const result = await response.json();
+                let outputHtml = '';
 
                 if (result.status === 'success') {
-                    // Munculkan mentah-mentah apa pun hasil dari API
-                    outputBox.innerHTML = `> [SUCCESS] DATA EXTRACTED.\n\n${JSON.stringify(result.data, null, 2)}`;
-                } else if (result.status === 'error' || result.status === 'not_found') {
-                    // Jika gagal, tampilkan pesan gagal PLUS log error aslinya
-                    let errorLog = result.data ? `\n\n[API RESPONSE LOG]:\n${JSON.stringify(result.data, null, 2)}` : '';
-                    outputBox.innerHTML = `> [FAILED] ${result.message}${errorLog}`;
+                    outputHtml = `> <span style="color:#4caf50;">[SUCCESS] DATA EXTRACTED.</span><br><br>${formatData(result.data)}`;
+                } else if (result.status === 'not_found') {
+                    outputHtml = `> <span style="color:#ff9800;">[NOT FOUND]</span> ${result.message}<br><br>${result.data ? formatData(result.data) : ''}`;
+                } else if (result.status === 'error') {
+                    outputHtml = `> <span style="color:#f44336;">[FAILED]</span> ${result.message}`;
                 } else if (result.status === 'limit_reached') {
-                    outputBox.innerHTML = `> [LOCKED] ${result.message}`;
+                    outputHtml = `> <span style="color:#f44336;">[LOCKED]</span> ${result.message}`;
                 }
+
+                outputBox.innerHTML = outputHtml;
 
                 if(result.limit_remaining !== undefined) {
                     limitStatus.innerText = `LIMIT REMAINING: ${result.limit_remaining}/4`;
                 }
 
             } catch (error) {
-                outputBox.innerHTML = "> [FATAL ERROR] Server connection timeout or failure. Pastikan backend Vercel berjalan.";
+                outputBox.innerHTML = "> <span style=\"color:#f44336;\">[FATAL ERROR]</span> Server connection timeout.";
             } finally {
                 btn.disabled = false;
                 btn.innerText = "EXECUTE COMMAND";
